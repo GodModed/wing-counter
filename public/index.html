@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wings</title>
+    <!-- tailwindcss from local -->
+    <link href="" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- local socket.io client -->
+    <script src="socket.io.js"></script>
+</head>
+
+<body>
+    <!--
+// v0 by Vercel.
+// https://v0.dev/t/SwLkOjBtlRZ
+-->
+
+    <div class="flex flex-col items-center justify-center h-screen gap-8 dark:bg-gray-900 dark:text-white">
+        <div class="flex items-center gap-4">
+            <input
+                class="flex h-10 w-full bg-background text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 px-4 py-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-800 dark:text-white dark:border-gray-600"
+                id="name" placeholder="Enter your name" type="text" />
+            <div class="flex items-center gap-2">
+                <button
+                    class="down inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent h-10 w-10 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="w-5 h-5">
+                        <path d="M5 12h14"></path>
+                    </svg>
+                </button>
+                <span class="text-lg font-medium wings">0</span>
+                <button
+                    class="up inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent h-10 w-10 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="w-5 h-5">
+                        <path d="M5 12h14"></path>
+                        <path d="M12 5v14"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="rounded-lg border bg-card text-card-foreground shadow-sm w-full max-w-md dark:bg-gray-800 dark:border-gray-700"
+            data-v0-t="card">
+            <div class="flex flex-col space-y-1.5 p-6">
+                <h3 class="whitespace-nowrap text-2xl font-semibold leading-none tracking-tight">Leaderboard</h3>
+                <p class="text-sm text-muted-foreground">Most wings</p>
+            </div>
+            <div class="p-6">
+                <div class="flex flex-col items-center justify-between mb-4">
+                    <span class="text-2xl font-bold total">Total: </span>
+                </div>
+                <div class="relative w-full overflow-auto">
+                    <table class="w-full caption-bottom text-sm dark:bg-gray-800 dark:border-gray-700">
+                        <thead class="[&amp;_tr]:border-b">
+                            <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                                <th
+                                    class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0">
+                                    Rank
+                                </th>
+                                <th
+                                    class="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0">
+                                    Name
+                                </th>
+                                <th
+                                    class="h-12 px-4 align-middle font-medium text-muted-foreground [&amp;:has([role=checkbox])]:pr-0 text-right">
+                                    Wings
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody class="[&amp;_tr:last-child]:border-0 leaderboard">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
+    const total = document.querySelector('.total');
+    const leaderboard = document.querySelector('.leaderboard');
+    const userCount = document.querySelector('.wings');
+    const upButton = document.querySelector('.up');
+    const downButton = document.querySelector('.down');
+    const nameInput = document.querySelector('#name');
+    const socket = io();
+
+    function updateTotal(value) {
+        total.textContent = `Total: ${value}`;
+    };
+
+    function generateRowTemplate(rank, name, wings) {
+        return `
+            <tr class="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted">
+                <td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">${rank}</td>
+                <td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0">${name}</td>
+                <td class="p-4 align-middle [&amp;:has([role=checkbox])]:pr-0 text-right">${wings}</td>
+            </tr>
+        `;
+    }
+
+    socket.on('connect', () => {
+        console.log('Connected to server');
+    });
+
+    socket.on('leaderboard', (data) => {
+        leaderboard.innerHTML = '';
+        const { sorted, total } = data;
+        updateTotal(total);
+        sorted.forEach((item, index) => {
+            const { name, count } = item[1];
+            if (count <= 0) {
+                return;
+            } 
+            const row = generateRowTemplate(index + 1, name, count);
+            leaderboard.innerHTML += row;
+        });
+    });
+
+    socket.on('user', (user) => {
+        userCount.textContent = user.count;
+    });
+
+    function normalizeName(name) {
+        return name.trim().toLowerCase().split(' ').map((word) => {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }).join(' ');
+    }
+
+    [upButton, downButton].map(button => {
+        button.addEventListener('click', () => {
+            const username = normalizeName(nameInput.value);
+            if (!username) {
+                return;
+            }
+
+            if (button.classList.contains('up')) {
+                userCount.textContent = parseInt(userCount.textContent) + 1;
+            } else {
+                userCount.textContent = parseInt(userCount.textContent) - 1;
+            }
+
+            const count = parseInt(userCount.textContent);
+
+            socket.emit("amount", username, count);
+        });
+    });
+
+    socket.on("amount", (count) => {
+        userCount.textContent = count;
+    });
+
+    // continuously wait until all typing has stopped
+    let typingTimer;
+    nameInput.addEventListener('input', () => {
+        clearTimeout(typingTimer);
+        typingTimer = setTimeout(() => {
+            const username = normalizeName(nameInput.value);
+            if (!username) {
+                return;
+            }
+            socket.emit("user", username);
+        }, 500);
+    });
+
+    socket.on('ammount', (count) => {
+        userCount.textContent = count;
+    });
+
+    socket.on("error", (message) => {
+        alert(message);
+    });
+
+    document.addEventListener('touchmove', function (event) {
+        if (event.scale !== 1) { event.preventDefault(); }
+    }, { passive: false });
+</script>
+
+</html>
