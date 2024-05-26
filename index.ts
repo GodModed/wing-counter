@@ -87,7 +87,12 @@ httpServer.listen(3000, () => {
 });
 
 function loadDB() {
-    const data = require("./db.json");
+    let data = {};
+    try {
+        data = require("./db.json");
+    } catch (err) {
+        console.log("No database found, creating a new one");
+    }
     for (const [key, value] of Object.entries(data)) {
         // @ts-ignore
         db.set(key, value);
